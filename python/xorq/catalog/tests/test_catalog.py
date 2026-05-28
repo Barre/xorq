@@ -637,12 +637,14 @@ def test_assert_consistency(catalog, tmpdir):
     catalog_addition = CatalogAddition(BuildZip(zip_path), catalog)
     catalog_addition.ensure_dirs()
     catalog_path = catalog_addition.catalog_entry.catalog_path
+    tracked_path = catalog.backend.entry_tracked_path(catalog_path)
     with catalog.commit_context("bad commit"):
-        shutil.copy(
-            zip_path,
-            catalog_path,
-        )
-        catalog.repo.index.add((catalog_path,))
+        if tracked_path != catalog_path:
+            tracked_path.write_text("xorq-pointer v1\nsha256 abc\nsize 0\n")
+            catalog.repo.index.add((tracked_path,))
+        else:
+            shutil.copy(zip_path, catalog_path)
+            catalog.repo.index.add((catalog_path,))
     with pytest.raises(AssertionError):
         catalog.assert_consistency()
     with pytest.raises(AssertionError):
